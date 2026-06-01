@@ -26,3 +26,37 @@ def create_aggregate_features(df):
     )
 
     return agg_df
+def extract_time_features(df):
+
+    df = df.copy()
+
+    df["TransactionStartTime"] = pd.to_datetime(
+        df["TransactionStartTime"]
+    )
+
+    df["hour"] = (
+        df["TransactionStartTime"]
+        .dt.hour
+    )
+
+    df["day"] = (
+        df["TransactionStartTime"]
+        .dt.day
+    )
+
+    df["month"] = (
+        df["TransactionStartTime"]
+        .dt.month
+    )
+
+    df["year"] = (
+        df["TransactionStartTime"]
+        .dt.year
+    )
+
+    df["weekday"] = (
+        df["TransactionStartTime"]
+        .dt.weekday
+    )
+
+    return df
