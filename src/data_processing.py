@@ -138,6 +138,8 @@ if __name__ == "__main__":
         "data/raw/data.csv"
     )
 
+    print(df.columns.tolist())
+
     processed_df = prepare_dataset(df)
 
     processed_df.to_csv(
