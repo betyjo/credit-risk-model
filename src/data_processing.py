@@ -10,6 +10,7 @@ from sklearn.preprocessing import (
 )
 
 from sklearn.impute import SimpleImputer
+from sklearn.cluster import KMeans
 def create_aggregate_features(df):
 
     agg_df = (
@@ -145,3 +146,42 @@ if __name__ == "__main__":
     print(
         "Processed dataset saved."
     )
+def calculate_rfm(df):
+
+    df = df.copy()
+
+    df["TransactionStartTime"] = pd.to_datetime(
+        df["TransactionStartTime"]
+    )
+
+    snapshot_date = (
+        df["TransactionStartTime"].max()
+        + pd.Timedelta(days=1)
+    )
+
+    rfm = (
+        df.groupby("CustomerId")
+        .agg(
+            Recency=(
+                "TransactionStartTime",
+                lambda x:
+                (
+                    snapshot_date
+                    - x.max()
+                ).days
+            ),
+
+            Frequency=(
+                "TransactionId",
+                "count"
+            ),
+
+            Monetary=(
+                "Amount",
+                "sum"
+            )
+        )
+        .reset_index()
+    )
+
+    return rfm
