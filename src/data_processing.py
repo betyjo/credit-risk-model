@@ -217,3 +217,27 @@ def create_rfm_clusters(rfm):
     )
 
     return rfm
+def create_proxy_target(rfm):
+
+    cluster_summary = (
+        rfm.groupby("cluster")
+        [
+            [
+                "Recency",
+                "Frequency",
+                "Monetary"
+            ]
+        ]
+        .mean()
+    )
+
+    print(cluster_summary)
+    high_risk_cluster = 2
+
+    rfm["is_high_risk"] = np.where(
+        rfm["cluster"] == high_risk_cluster,
+        1,
+        0
+    )
+
+    return rfm
