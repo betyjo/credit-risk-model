@@ -1,19 +1,34 @@
-# Credit Risk Probability Model
+# Credit Risk Probability Model for Alternative Data
+
+## Project Overview
+
+This project develops an end-to-end credit risk scoring system for Bati Bank using transaction data from the Xente eCommerce platform. Since the dataset does not contain an actual loan default label, a proxy target variable is created using RFM (Recency, Frequency, Monetary) customer behavior analysis.
+
+The final solution includes:
+
+- Exploratory Data Analysis (EDA)
+- Feature Engineering
+- Proxy Target Variable Construction
+- Machine Learning Model Training
+- MLflow Experiment Tracking
+- FastAPI Model Deployment
+- Docker Containerization
+- CI/CD Automation using GitHub Actions
 
 ## Credit Scoring Business Understanding
 
 ### Basel II and Model Interpretability
 
-Basel II requires financial institutions to develop transparent and well-documented risk models. Credit decisions must be explainable to regulators and internal stakeholders. Therefore, model interpretability, documentation, monitoring, and reproducibility are critical requirements.
+The Basel II Accord emphasizes accurate risk measurement, transparency, and documentation in credit risk modeling. Financial institutions must be able to explain how a credit decision was reached and demonstrate that the model is reliable and monitored over time. Therefore, model interpretability and reproducibility are critical considerations.
 
 ### Need for a Proxy Variable
 
-The Xente dataset contains transaction information but does not contain an explicit default label. A proxy variable is therefore required to approximate customer credit risk. We will use customer engagement behavior through RFM analysis to identify potentially high-risk customers.
+The Xente dataset does not contain a direct loan default indicator. Since supervised machine learning requires labeled outcomes, a proxy target variable must be created. Customer behavioral patterns derived from RFM analysis are used to identify potentially high-risk customers.
 
 ### Risks of Proxy-Based Prediction
 
-Proxy variables do not represent actual loan defaults. This introduces risks such as incorrect labeling and prediction bias. Results should therefore be interpreted as estimated risk rather than verified default behavior.
+A proxy variable is an approximation rather than a true measure of default. This may introduce labeling errors where some low-risk customers are classified as high-risk and vice versa. The resulting model predicts behavioral risk rather than actual repayment behavior.
 
-### Interpretable vs High-Performance Models
+### Trade-Off Between Interpretable and High-Performance Models
 
-Logistic Regression combined with Weight of Evidence (WoE) offers transparency and regulatory friendliness. Ensemble methods such as Random Forest and XGBoost may provide better predictive performance but are more difficult to explain. Both approaches will be evaluated.
+Logistic Regression combined with Weight of Evidence (WoE) provides strong interpretability and regulatory compliance. More complex models such as Random Forest and XGBoost often achieve higher predictive performance but may be harder to explain. Both model families will be evaluated and compared.
