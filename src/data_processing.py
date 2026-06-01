@@ -200,3 +200,20 @@ def scale_rfm(rfm):
     )
 
     return scaled
+def create_rfm_clusters(rfm):
+
+    scaled_rfm = scale_rfm(rfm)
+
+    kmeans = KMeans(
+        n_clusters=3,
+        random_state=42,
+        n_init=10
+    )
+
+    rfm["cluster"] = (
+        kmeans.fit_predict(
+            scaled_rfm
+        )
+    )
+
+    return rfm
