@@ -60,3 +60,16 @@ def extract_time_features(df):
     )
 
     return df
+def merge_customer_features(df):
+
+    customer_features = (
+        create_aggregate_features(df)
+    )
+
+    merged = df.merge(
+        customer_features,
+        on="CustomerId",
+        how="left"
+    )
+
+    return merged
