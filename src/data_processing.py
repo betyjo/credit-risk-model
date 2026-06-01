@@ -129,6 +129,8 @@ def prepare_dataset(df):
 
     df = merge_customer_features(df)
 
+    df = merge_target(df)
+
     return df
 if __name__ == "__main__":
 
