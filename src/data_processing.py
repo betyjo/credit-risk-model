@@ -185,3 +185,18 @@ def calculate_rfm(df):
     )
 
     return rfm
+def scale_rfm(rfm):
+
+    scaler = StandardScaler()
+
+    scaled = scaler.fit_transform(
+        rfm[
+            [
+                "Recency",
+                "Frequency",
+                "Monetary"
+            ]
+        ]
+    )
+
+    return scaled
