@@ -241,3 +241,23 @@ def create_proxy_target(rfm):
     )
 
     return rfm
+def merge_target(df):
+
+    rfm = calculate_rfm(df)
+
+    rfm = create_rfm_clusters(rfm)
+
+    rfm = create_proxy_target(rfm)
+
+    df = df.merge(
+        rfm[
+            [
+                "CustomerId",
+                "is_high_risk"
+            ]
+        ],
+        on="CustomerId",
+        how="left"
+    )
+
+    return df
