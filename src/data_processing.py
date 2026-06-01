@@ -122,3 +122,10 @@ def build_preprocessor(
         ]
     )
         return preprocessor
+def prepare_dataset(df):
+
+    df = extract_time_features(df)
+
+    df = merge_customer_features(df)
+
+    return df
