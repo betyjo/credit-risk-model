@@ -129,3 +129,19 @@ def prepare_dataset(df):
     df = merge_customer_features(df)
 
     return df
+if __name__ == "__main__":
+
+    df = pd.read_csv(
+        "data/raw/data.csv"
+    )
+
+    processed_df = prepare_dataset(df)
+
+    processed_df.to_csv(
+        "data/processed/processed_data.csv",
+        index=False
+    )
+
+    print(
+        "Processed dataset saved."
+    )
