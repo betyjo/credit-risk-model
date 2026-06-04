@@ -3,14 +3,11 @@ import numpy as np
 
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-
-from sklearn.preprocessing import (
-    OneHotEncoder,
-    StandardScaler
-)
-
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.cluster import KMeans
+
+
 def create_aggregate_features(df):
 
     agg_df = (
@@ -27,6 +24,8 @@ def create_aggregate_features(df):
     )
 
     return agg_df
+
+
 def extract_time_features(df):
 
     df = df.copy()
@@ -35,37 +34,18 @@ def extract_time_features(df):
         df["TransactionStartTime"]
     )
 
-    df["hour"] = (
-        df["TransactionStartTime"]
-        .dt.hour
-    )
-
-    df["day"] = (
-        df["TransactionStartTime"]
-        .dt.day
-    )
-
-    df["month"] = (
-        df["TransactionStartTime"]
-        .dt.month
-    )
-
-    df["year"] = (
-        df["TransactionStartTime"]
-        .dt.year
-    )
-
-    df["weekday"] = (
-        df["TransactionStartTime"]
-        .dt.weekday
-    )
+    df["hour"] = df["TransactionStartTime"].dt.hour
+    df["day"] = df["TransactionStartTime"].dt.day
+    df["month"] = df["TransactionStartTime"].dt.month
+    df["year"] = df["TransactionStartTime"].dt.year
+    df["weekday"] = df["TransactionStartTime"].dt.weekday
 
     return df
+
+
 def merge_customer_features(df):
 
-    customer_features = (
-        create_aggregate_features(df)
-    )
+    customer_features = create_aggregate_features(df)
 
     merged = df.merge(
         customer_features,
@@ -74,82 +54,8 @@ def merge_customer_features(df):
     )
 
     return merged
-def build_preprocessor(
-    numerical_cols,
-    categorical_cols
-):
-        numerical_pipeline = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(
-                    strategy="median"
-                )
-            ),
-            (
-                "scaler",
-                StandardScaler()
-            )
-        ]
-    )
-        categorical_pipeline = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(
-                    strategy="most_frequent"
-                )
-            ),
-            (
-                "encoder",
-                OneHotEncoder(
-                    handle_unknown="ignore"
-                )
-            )
-        ]
-    )
-        preprocessor = ColumnTransformer(
-        transformers=[
-            (
-                "num",
-                numerical_pipeline,
-                numerical_cols
-            ),
-            (
-                "cat",
-                categorical_pipeline,
-                categorical_cols
-            )
-        ]
-    )
-        return preprocessor
-def prepare_dataset(df):
 
-    df = extract_time_features(df)
 
-    df = merge_customer_features(df)
-
-    df = merge_target(df)
-
-    return df
-if __name__ == "__main__":
-
-    df = pd.read_csv(
-        "data/raw/data.csv"
-    )
-
-    print(df.columns.tolist())
-
-    processed_df = prepare_dataset(df)
-
-    processed_df.to_csv(
-        "data/processed/processed_data.csv",
-        index=False
-    )
-
-    print(
-        "Processed dataset saved."
-    )
 def calculate_rfm(df):
 
     df = df.copy()
@@ -168,18 +74,14 @@ def calculate_rfm(df):
         .agg(
             Recency=(
                 "TransactionStartTime",
-                lambda x:
-                (
-                    snapshot_date
-                    - x.max()
+                lambda x: (
+                    snapshot_date - x.max()
                 ).days
             ),
-
             Frequency=(
                 "TransactionId",
                 "count"
             ),
-
             Monetary=(
                 "Amount",
                 "sum"
@@ -189,21 +91,19 @@ def calculate_rfm(df):
     )
 
     return rfm
+
+
 def scale_rfm(rfm):
 
     scaler = StandardScaler()
 
-    scaled = scaler.fit_transform(
-        rfm[
-            [
-                "Recency",
-                "Frequency",
-                "Monetary"
-            ]
-        ]
+    scaled_rfm = scaler.fit_transform(
+        rfm[["Recency", "Frequency", "Monetary"]]
     )
 
-    return scaled
+    return scaled_rfm
+
+
 def create_rfm_clusters(rfm):
 
     scaled_rfm = scale_rfm(rfm)
@@ -214,29 +114,28 @@ def create_rfm_clusters(rfm):
         n_init=10
     )
 
-    rfm["cluster"] = (
-        kmeans.fit_predict(
-            scaled_rfm
-        )
+    rfm["cluster"] = kmeans.fit_predict(
+        scaled_rfm
     )
 
     return rfm
+
+
 def create_proxy_target(rfm):
 
     cluster_summary = (
         rfm.groupby("cluster")
-        [
-            [
-                "Recency",
-                "Frequency",
-                "Monetary"
-            ]
-        ]
+        [["Recency", "Frequency", "Monetary"]]
         .mean()
     )
 
+    print("\nCluster Summary:")
     print(cluster_summary)
-    high_risk_cluster = 2
+
+    high_risk_cluster = (
+        cluster_summary["Frequency"]
+        .idxmin()
+    )
 
     rfm["is_high_risk"] = np.where(
         rfm["cluster"] == high_risk_cluster,
@@ -245,6 +144,8 @@ def create_proxy_target(rfm):
     )
 
     return rfm
+
+
 def merge_target(df):
 
     rfm = calculate_rfm(df)
@@ -257,6 +158,9 @@ def merge_target(df):
         rfm[
             [
                 "CustomerId",
+                "Recency",
+                "Frequency",
+                "Monetary",
                 "is_high_risk"
             ]
         ],
@@ -265,3 +169,87 @@ def merge_target(df):
     )
 
     return df
+
+
+def build_preprocessor(
+    numerical_cols,
+    categorical_cols
+):
+
+    numerical_pipeline = Pipeline(
+        steps=[
+            (
+                "imputer",
+                SimpleImputer(
+                    strategy="median"
+                )
+            ),
+            (
+                "scaler",
+                StandardScaler()
+            )
+        ]
+    )
+
+    categorical_pipeline = Pipeline(
+        steps=[
+            (
+                "imputer",
+                SimpleImputer(
+                    strategy="most_frequent"
+                )
+            ),
+            (
+                "encoder",
+                OneHotEncoder(
+                    handle_unknown="ignore"
+                )
+            )
+        ]
+    )
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "num",
+                numerical_pipeline,
+                numerical_cols
+            ),
+            (
+                "cat",
+                categorical_pipeline,
+                categorical_cols
+            )
+        ]
+    )
+
+    return preprocessor
+
+
+def prepare_dataset(df):
+
+    df = extract_time_features(df)
+
+    df = merge_customer_features(df)
+
+    df = merge_target(df)
+
+    return df
+
+
+if __name__ == "__main__":
+
+    df = pd.read_csv(
+        "data/raw/data.csv"
+    )
+
+    processed_df = prepare_dataset(df)
+
+    processed_df.to_csv(
+        "data/processed/processed_data.csv",
+        index=False
+    )
+
+    print(
+        "Processed dataset saved successfully."
+    )
