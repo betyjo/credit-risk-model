@@ -2,9 +2,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import pandas as pd
+import joblib
 import mlflow
 import mlflow.sklearn
-import joblib
 
 from sklearn.model_selection import (
     train_test_split,
@@ -25,18 +25,22 @@ from sklearn.ensemble import (
     GradientBoostingClassifier
 )
 
-# -----------------------------------
-# LOAD DATA
-# -----------------------------------
 
+# -----------------------------
+# LOAD DATA
+# -----------------------------
 df = pd.read_csv(
     "data/processed/processed_data.csv"
 )
 
-# -----------------------------------
-# FEATURES / TARGET
-# -----------------------------------
+print("Dataset Shape:", df.shape)
+print("Target Distribution:")
+print(df["is_high_risk"].value_counts())
 
+
+# -----------------------------
+# FEATURES / TARGET
+# -----------------------------
 X = df.drop(
     columns=[
         "CustomerId",
@@ -46,48 +50,47 @@ X = df.drop(
     errors="ignore"
 )
 
+# keep only numeric columns
+X = X.select_dtypes(include=["number"])
+
 y = df["is_high_risk"]
 
-# -----------------------------------
-# TRAIN TEST SPLIT
-# -----------------------------------
 
-X_train, X_test, y_train, y_test = (
-    train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y
-    )
+# -----------------------------
+# TRAIN TEST SPLIT
+# -----------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
 )
 
-# -----------------------------------
+
+# -----------------------------
 # MODELS
-# -----------------------------------
-
+# -----------------------------
 models = {
-    "LogisticRegression":
-        LogisticRegression(
-            max_iter=1000,
-            random_state=42
-        ),
+    "LogisticRegression": LogisticRegression(
+        max_iter=1000,
+        random_state=42
+    ),
 
-    "RandomForest":
-        RandomForestClassifier(
-            random_state=42
-        ),
+    "RandomForest": RandomForestClassifier(
+        n_estimators=100,
+        random_state=42
+    ),
 
-    "GradientBoosting":
-        GradientBoostingClassifier(
-            random_state=42
-        )
+    "GradientBoosting": GradientBoostingClassifier(
+        random_state=42
+    )
 }
 
-# -----------------------------------
-# MLFLOW EXPERIMENT
-# -----------------------------------
 
+# -----------------------------
+# MLFLOW
+# -----------------------------
 mlflow.set_experiment(
     "credit-risk-model"
 )
@@ -95,10 +98,10 @@ mlflow.set_experiment(
 best_model = None
 best_auc = 0
 
-# -----------------------------------
-# TRAIN MODELS
-# -----------------------------------
 
+# -----------------------------
+# TRAINING LOOP
+# -----------------------------
 for model_name, model in models.items():
 
     with mlflow.start_run(
@@ -110,7 +113,9 @@ for model_name, model in models.items():
             y_train
         )
 
-        preds = model.predict(X_test)
+        preds = model.predict(
+            X_test
+        )
 
         probs = model.predict_proba(
             X_test
@@ -139,6 +144,11 @@ for model_name, model in models.items():
         auc = roc_auc_score(
             y_test,
             probs
+        )
+
+        mlflow.log_param(
+            "model",
+            model_name
         )
 
         mlflow.log_metric(
@@ -171,27 +181,49 @@ for model_name, model in models.items():
             model_name
         )
 
-        print(f"\n{model_name}")
-        print(f"AUC: {auc:.4f}")
+        print("\n" + "=" * 50)
+        print(model_name)
+        print("=" * 50)
+
+        print(
+            f"Accuracy : {accuracy:.4f}"
+        )
+
+        print(
+            f"Precision: {precision:.4f}"
+        )
+
+        print(
+            f"Recall   : {recall:.4f}"
+        )
+
+        print(
+            f"F1 Score : {f1:.4f}"
+        )
+
+        print(
+            f"ROC AUC  : {auc:.4f}"
+        )
 
         if auc > best_auc:
-
             best_auc = auc
             best_model = model
 
-# -----------------------------------
-# SAVE BEST MODEL
-# -----------------------------------
 
+# -----------------------------
+# SAVE BEST MODEL
+# -----------------------------
 joblib.dump(
     best_model,
     "best_model.pkl"
 )
 
+print("\n" + "=" * 50)
+print("BEST MODEL")
+print("=" * 50)
 print(
-    f"\nBest ROC-AUC: {best_auc:.4f}"
+    f"Best ROC-AUC: {best_auc:.4f}"
 )
-
 print(
-    "Saved: best_model.pkl"
+    "Saved -> best_model.pkl"
 )
