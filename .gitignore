@@ -1,7 +1,16 @@
-data/
-
+# MLflow
 mlruns/
+mlflow.db
 
+# Figures
+figures/
+
+# Reports
+reports/
+
+# Data
+data/raw/
+data/processed/
 __pycache__/
 
 *.pyc

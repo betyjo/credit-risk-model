@@ -3,13 +3,11 @@ import numpy as np
 
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-
-from sklearn.preprocessing import (
-    OneHotEncoder,
-    StandardScaler
-)
-
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.cluster import KMeans
+
+
 def create_aggregate_features(df):
 
     agg_df = (
@@ -26,6 +24,8 @@ def create_aggregate_features(df):
     )
 
     return agg_df
+
+
 def extract_time_features(df):
 
     df = df.copy()
@@ -34,37 +34,18 @@ def extract_time_features(df):
         df["TransactionStartTime"]
     )
 
-    df["hour"] = (
-        df["TransactionStartTime"]
-        .dt.hour
-    )
-
-    df["day"] = (
-        df["TransactionStartTime"]
-        .dt.day
-    )
-
-    df["month"] = (
-        df["TransactionStartTime"]
-        .dt.month
-    )
-
-    df["year"] = (
-        df["TransactionStartTime"]
-        .dt.year
-    )
-
-    df["weekday"] = (
-        df["TransactionStartTime"]
-        .dt.weekday
-    )
+    df["hour"] = df["TransactionStartTime"].dt.hour
+    df["day"] = df["TransactionStartTime"].dt.day
+    df["month"] = df["TransactionStartTime"].dt.month
+    df["year"] = df["TransactionStartTime"].dt.year
+    df["weekday"] = df["TransactionStartTime"].dt.weekday
 
     return df
+
+
 def merge_customer_features(df):
 
-    customer_features = (
-        create_aggregate_features(df)
-    )
+    customer_features = create_aggregate_features(df)
 
     merged = df.merge(
         customer_features,
@@ -73,11 +54,129 @@ def merge_customer_features(df):
     )
 
     return merged
+
+
+def calculate_rfm(df):
+
+    df = df.copy()
+
+    df["TransactionStartTime"] = pd.to_datetime(
+        df["TransactionStartTime"]
+    )
+
+    snapshot_date = (
+        df["TransactionStartTime"].max()
+        + pd.Timedelta(days=1)
+    )
+
+    rfm = (
+        df.groupby("CustomerId")
+        .agg(
+            Recency=(
+                "TransactionStartTime",
+                lambda x: (
+                    snapshot_date - x.max()
+                ).days
+            ),
+            Frequency=(
+                "TransactionId",
+                "count"
+            ),
+            Monetary=(
+                "Amount",
+                "sum"
+            )
+        )
+        .reset_index()
+    )
+
+    return rfm
+
+
+def scale_rfm(rfm):
+
+    scaler = StandardScaler()
+
+    scaled_rfm = scaler.fit_transform(
+        rfm[["Recency", "Frequency", "Monetary"]]
+    )
+
+    return scaled_rfm
+
+
+def create_rfm_clusters(rfm):
+
+    scaled_rfm = scale_rfm(rfm)
+
+    kmeans = KMeans(
+        n_clusters=3,
+        random_state=42,
+        n_init=10
+    )
+
+    rfm["cluster"] = kmeans.fit_predict(
+        scaled_rfm
+    )
+
+    return rfm
+
+
+def create_proxy_target(rfm):
+
+    cluster_summary = (
+        rfm.groupby("cluster")
+        [["Recency", "Frequency", "Monetary"]]
+        .mean()
+    )
+
+    print("\nCluster Summary:")
+    print(cluster_summary)
+
+    high_risk_cluster = (
+        cluster_summary["Frequency"]
+        .idxmin()
+    )
+
+    rfm["is_high_risk"] = np.where(
+        rfm["cluster"] == high_risk_cluster,
+        1,
+        0
+    )
+
+    return rfm
+
+
+def merge_target(df):
+
+    rfm = calculate_rfm(df)
+
+    rfm = create_rfm_clusters(rfm)
+
+    rfm = create_proxy_target(rfm)
+
+    df = df.merge(
+        rfm[
+            [
+                "CustomerId",
+                "Recency",
+                "Frequency",
+                "Monetary",
+                "is_high_risk"
+            ]
+        ],
+        on="CustomerId",
+        how="left"
+    )
+
+    return df
+
+
 def build_preprocessor(
     numerical_cols,
     categorical_cols
 ):
-        numerical_pipeline = Pipeline(
+
+    numerical_pipeline = Pipeline(
         steps=[
             (
                 "imputer",
@@ -91,7 +190,8 @@ def build_preprocessor(
             )
         ]
     )
-        categorical_pipeline = Pipeline(
+
+    categorical_pipeline = Pipeline(
         steps=[
             (
                 "imputer",
@@ -107,7 +207,8 @@ def build_preprocessor(
             )
         ]
     )
-        preprocessor = ColumnTransformer(
+
+    preprocessor = ColumnTransformer(
         transformers=[
             (
                 "num",
@@ -121,14 +222,21 @@ def build_preprocessor(
             )
         ]
     )
-        return preprocessor
+
+    return preprocessor
+
+
 def prepare_dataset(df):
 
     df = extract_time_features(df)
 
     df = merge_customer_features(df)
 
+    df = merge_target(df)
+
     return df
+
+
 if __name__ == "__main__":
 
     df = pd.read_csv(
@@ -143,5 +251,5 @@ if __name__ == "__main__":
     )
 
     print(
-        "Processed dataset saved."
+        "Processed dataset saved successfully."
     )
